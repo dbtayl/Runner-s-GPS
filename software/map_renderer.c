@@ -116,7 +116,6 @@ uint8_t redrawMap(uint8_t rotation, uint8_t zoom)
 	
 	//Load tiles and render to screen
 	//Set the window to our rendering area
-	//ili9340_setAddrWindow(renderX, renderY, renderX + renderW - 1, renderY + renderH - 1, rotation);
 	ili9340_set_view(rotation, renderX, renderX + renderW - 1, renderY, renderY + renderH - 1);
 	ILI9340_CS_ENABLE();
 	
@@ -186,12 +185,9 @@ uint8_t redrawMap(uint8_t rotation, uint8_t zoom)
 		uint32_t currentOffset[tilesX];
 		for(k = 0; k < tilesX; k++)
 		{
-//			currentOffset[k] = pixelDataOffset[k] \  /*Base offset to pixel data*/
-//													+ (j == 0 ? offy * 2 * MAP_TILE_SIZE : 0) \ /*Top clipping for first row*/
-//													+ (k == 0 ? offx * 2); /*Left clipping for first col*/
-				currentOffset[k] = pixelDataOffset[k] \
-													+ (j == 0 ? offy * 2 * MAP_TILE_SIZE : 0) \
-													+ (k == 0 ? offx * 2 : 0);
+			currentOffset[k] = pixelDataOffset[k] \
+								+ (j == 0 ? offy * 2 * MAP_TILE_SIZE : 0) \
+								+ (k == 0 ? offx * 2 : 0);
 		}
 		
 		
@@ -267,7 +263,6 @@ uint8_t redrawMap(uint8_t rotation, uint8_t zoom)
 	
 	//Render the user position (right in middle of map render area)
 	//Set the window area to 
-	//ili9340_setAddrWindow(renderX + renderW/2 - MAP_RENDER_USER_SIZE, renderY + renderH/2 - MAP_RENDER_USER_SIZE, renderX + renderW/2 + MAP_RENDER_USER_SIZE - 1, renderY + renderH/2 + MAP_RENDER_USER_SIZE - 1, rotation);
 	ili9340_set_view(rotation, renderX + renderW/2 - MAP_RENDER_USER_SIZE, renderX + renderW/2 + MAP_RENDER_USER_SIZE, renderY + renderH/2 - MAP_RENDER_USER_SIZE, renderY + renderH/2 + MAP_RENDER_USER_SIZE);
 	ILI9340_CS_ENABLE();
 	

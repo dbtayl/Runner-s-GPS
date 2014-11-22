@@ -142,57 +142,6 @@ void GPS_Wakeup()
 }
 
 
-/*
-void UARTFlush(void)
-{
-	// Flush the software buffer
-	for(GPSUARTIndex=0; GPSUARTIndex<GPS_UART_DATA_SIZE; GPSUARTIndex++)
-	{
-		GPSUARTBuffer[GPSUARTIndex] = 0;
-	}
-	
-	GPSUARTIndex = 0;
-	
-	// Flush the hardware FIFO
-	LPC_UART3->FCR = 0x00;
-	LPC_UART3->FCR = 0x07;                       // Reset buffer
-	LPC_UART3->SCR = LPC_UART->LSR;
-	 
-	while (LPC_UART->LSR & 0x01)
-	{
-		LPC_UART->SCR = LPC_UART->RBR;  // Dump any data
-	}
-	
-	return;
-}*/
-
-
-/*void UARTWriteByte(unsigned char data)
-{
-	//LPC_UART->IER &= ~0x001;                    // Disable receive interrupt while transmitting (causes problems in loop-back mode)
-	while ((LPC_UART->LSR & 0x20) == 0) //Wait for tx holding register to be empty
-	{
-	}
-	LPC_UART->THR = data;
-	//LPC_UART->IER |= 0x001;                     // Re-enable receive interrupt
-}
-
-
-void UARTWrite(unsigned char data[], unsigned int length)
-{
-	unsigned int i;
-	//LPC_UART->IER &= ~0x001;                    // Disable receive interrupt while transmitting (causes problems in loop-back mode)
-	for(i=0; i<length; i++)
-	{
-		while ((LPC_UART->LSR & 0x20) == 0) //Wait for tx holding register to be empty
-		{
-		}
-		LPC_UART->THR = data[i];
-	}
-	//LPC_UART->IER |= 0x001;                     // Re-enable receive interrupt
-}*/
-
-
 //Internal function to parse GPS message
 //FIXME: Do some error checking?
 inline void parseMessage()

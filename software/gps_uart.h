@@ -53,10 +53,5 @@ void GPS_Stop(void);
 
 void GPS_Sleep();
 void GPS_Wakeup();
-/*
-void UARTFlush(void);
-void UARTWrite(unsigned char data[], unsigned int length);
-void UARTWriteByte(unsigned char data);
-*/
 
 #endif

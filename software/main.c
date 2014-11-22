@@ -231,22 +231,13 @@ int main()
 		
 		//set position for splash image
 		ili9340_set_view(ROT_90, (TFTHEIGHT-splashdim[0])/2, (TFTHEIGHT-splashdim[0])/2 + splashdim[0] - 1, (TFTWIDTH-splashdim[1])/2, (TFTWIDTH-splashdim[1])/2 + splashdim[1] - 1);
-		//ili9340_set_view(ROT_0, (TFTWIDTH-splashdim[0])/2, (TFTWIDTH-splashdim[0])/2 + splashdim[0] - 1, (TFTHEIGHT-splashdim[1])/2, (TFTHEIGHT-splashdim[1])/2 + splashdim[1] - 1);
 		
 		//Make sure we're in pixel-writing mode
 		ILI9340_CS_ENABLE();
 		ili9340_writeRegOnly(0x002c);
 		ILI9340_MODE_DATA();
 		
-		//Read and render pixels
-		/*uint16_t* splashcache = (uint16_t*)cache;
-		int i;
-		for(i = 0; i < splashdim[1]; i++)
-		{
-			f_read(&dataFile, splashcache, rowsize, &br);
-			ili9340_writeDataMultiple(splashcache, splashdim[0]);
-		}*/
-		
+		//Read and render pixels		
 		#define UNROLL_VAL 20
 		uint16_t splashcache[UNROLL_VAL];
 		int i;
@@ -484,17 +475,11 @@ void disableUnusedClocks()
 	//Turn off parts we don't use
 	//See page 28 of user manual
 	//See also section 10.2 of datasheet
-	//TIM_DeInit(LPC_TIM1);
 	CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCTIM1, DISABLE);
-	//UART_DeInit(UART_1);
 	CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCUART1, DISABLE);
-	//I2C_DeInit(LPC_I2C0);
 	CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCI2C0, DISABLE);
-	//I2C_DeInit(LPC_I2C1);
 	CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCI2C1, DISABLE);
-	//I2C_DeInit(LPC_I2C2);
 	CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCI2C2, DISABLE);
-	//RTC_DeInit(LPC_RTC);
 	CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCRTC, DISABLE);
 	
 	return;
@@ -581,109 +566,3 @@ void HardFault_Handler(void)
 	}
 	
 }
-
-
-
-/*
-//12 (8.3) characters is the limit for this string, unless you enable LFN
-	if(f_open(&dataFile, "test.bmp", FA_OPEN_EXISTING|FA_READ) != FR_OK)
-	{
-		UART_Send(UART_0, "fopen failure\n\r", 15, BLOCKING);
-		while(1)
-		{
-		}
-	}
-	
-	UART_Send(UART_0, "Opened file\n\r", 13, BLOCKING);
-	
-	
-	UART_Send(UART_0, "SD OK!\n\r", 8, BLOCKING);
-	
-	
-	#define PIX_PER_IT 32
-	ili9340_reset();
-	Delay(100);
-	TFT_24_9340_Init();
-	Delay(100);
-	//ili9340_set_view(ROT_270, 0, 319, 0, 239);
-	ILI9340_CS_ENABLE();
-	TFT_24S_Write_Command_Safe(0x002C);				//Memory write
-	ILI9340_MODE_DATA();
-	
-	
-	if(f_lseek(&dataFile, 0x0a) != FR_OK)
-	{
-		UART_Send(UART_0, "Couldn't seek to 0x0a\n\r", 23, BLOCKING);
-		while(1)
-		{
-		}
-	}
-	uint32_t offset;
-	uint32_t br;
-	
-	UART_Send(UART_0, "Seek to 0x0a OK\n\r", 17, BLOCKING);
-	
-	f_read(&dataFile, &offset, 4, &br);
-	
-	if(br != 4)
-	{
-		UART_Send(UART_0, "Couldn't read offset\n\r", 22, BLOCKING);
-		while(1)
-		{
-		}
-	}
-	
-	UART_Send(UART_0, "Read offset OK\n\r", 16, BLOCKING);
-	
-	if(f_lseek(&dataFile, offset) != FR_OK)
-	{
-		UART_Send(UART_0, "Couldn't seek to image\n\r", 24, BLOCKING);
-		while(1)
-		{
-		}
-	}
-	
-	UART_Send(UART_0, "Seek to image OK\n\r", 18, BLOCKING);
-	
-	int k;
-	for(k = 0; k < 240 * 320 / PIX_PER_IT; k++)
-	{
-		uint16_t pix[PIX_PER_IT];
-		f_read(&dataFile, pix, PIX_PER_IT * 2, &br);
-		ili9340_writeData(pix[0]);
-		ili9340_writeData(pix[1]);
-		ili9340_writeData(pix[2]);
-		ili9340_writeData(pix[3]);
-		ili9340_writeData(pix[4]);
-		ili9340_writeData(pix[5]);
-		ili9340_writeData(pix[6]);
-		ili9340_writeData(pix[7]);
-		ili9340_writeData(pix[8]);
-		ili9340_writeData(pix[9]);
-		ili9340_writeData(pix[10]);
-		ili9340_writeData(pix[11]);
-		ili9340_writeData(pix[12]);
-		ili9340_writeData(pix[13]);
-		ili9340_writeData(pix[14]);
-		ili9340_writeData(pix[15]);
-		ili9340_writeData(pix[16]);
-		ili9340_writeData(pix[17]);
-		ili9340_writeData(pix[18]);
-		ili9340_writeData(pix[19]);
-		ili9340_writeData(pix[20]);
-		ili9340_writeData(pix[21]);
-		ili9340_writeData(pix[22]);
-		ili9340_writeData(pix[23]);
-		ili9340_writeData(pix[24]);
-		ili9340_writeData(pix[25]);
-		ili9340_writeData(pix[26]);
-		ili9340_writeData(pix[27]);
-		ili9340_writeData(pix[28]);
-		ili9340_writeData(pix[29]);
-		ili9340_writeData(pix[30]);
-		ili9340_writeData(pix[31]);
-		//UART_Send(UART_0, "End of write loop...\n\r", 22, BLOCKING);
-	}
-	
-	ILI9340_CS_DISABLE();
-	*/
