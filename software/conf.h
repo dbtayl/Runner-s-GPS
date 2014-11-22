@@ -28,6 +28,9 @@
 #ifndef CONF_H
 #define CONF_H
 
+#include "ili9340.h"
+
+#define DEFAULT_ROT ROT_90
 #define DEFAULT_LCD_BACKLIGHT 400
 
 #endif

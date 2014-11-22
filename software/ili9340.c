@@ -36,6 +36,10 @@
 //??? means "I really don't know what this does"
 //LATER means "I might want to use this later"
 
+
+ScreenInfo screenInfo = {.rot = ROT_0, .w = TFTWIDTH_PHYS, .h = TFTHEIGHT_PHYS};
+
+
 void Delay(uint32_t ms)
 {
 	TIM_Waitus(ms*1000);
@@ -136,7 +140,7 @@ uint8_t ili9340_set_view(uint8_t rot, uint16_t sc, uint16_t ec, uint16_t sr, uin
 	//Landscape
 	if(rot & 0x01)
 	{
-		if( (sc >= ec) || (sr >= er) || (er >= TFTWIDTH) || (ec >= TFTHEIGHT) )
+		if( (sc >= ec) || (sr >= er) || (er >= TFTWIDTH_PHYS) || (ec >= TFTHEIGHT_PHYS) )
 		{
 			return 1;
 		}
@@ -144,7 +148,7 @@ uint8_t ili9340_set_view(uint8_t rot, uint16_t sc, uint16_t ec, uint16_t sr, uin
 	//Portrait
 	else
 	{
-		if( (sc >= ec) || (sr >= er) || (er >= TFTHEIGHT) || (ec >= TFTWIDTH) )
+		if( (sc >= ec) || (sr >= er) || (er >= TFTHEIGHT_PHYS) || (ec >= TFTWIDTH_PHYS) )
 		{
 			return 1;
 		}
@@ -174,10 +178,15 @@ uint8_t ili9340_set_view(uint8_t rot, uint16_t sc, uint16_t ec, uint16_t sr, uin
 		//Assume 0 rotation
 		default:
 		{
+			rot = ROT_0; //Make sure the rotation actually is 0
 			ili9340_writeReg(0x0036, BGR); //Correct
 			break;
 		}
 	}
+	
+	screenInfo.rot = rot;
+	screenInfo.h = (rot & 0x01) ? TFTWIDTH_PHYS : TFTHEIGHT_PHYS;
+	screenInfo.w = (rot & 0x01) ? TFTHEIGHT_PHYS : TFTWIDTH_PHYS;
 	
 	ili9340_set_renderarea(sc, ec, sr, er);
 	
@@ -267,7 +276,7 @@ void ili9340_floodFill(uint16_t color, uint32_t count)
 }
 
 
-void ili9340_init(void)
+void ili9340_init(uint8_t rot)
 {
 	//GPIO_ResetBits(GPIOC, CS1);
 	ILI9340_CS_ENABLE();
@@ -331,6 +340,6 @@ void ili9340_init(void)
 		ili9340_writeData(0x003A);
 		ili9340_writeData(0x001F);
 		
-	//Power up in portrait mode
-	ili9340_set_renderarea(0x0000, 0x00ef, 0x0000, 0x013f);
+	//Set proper orientation
+	ili9340_set_view(rot, 0x0000, rot&0x01 ? TFTHEIGHT_PHYS-1 : TFTWIDTH_PHYS-1, 0x0000, rot&0x01 ? TFTWIDTH_PHYS-1 : TFTHEIGHT_PHYS-1);
 }

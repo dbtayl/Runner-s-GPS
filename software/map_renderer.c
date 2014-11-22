@@ -40,7 +40,7 @@
 
 
 
-uint8_t redrawMap(uint8_t rotation, uint8_t zoom)
+uint8_t redrawMap(uint8_t zoom)
 {	
 	const uint32_t pow2zoom = 1<<zoom;
 	uint32_t br; //place to store f_read bytes read
@@ -54,10 +54,10 @@ uint8_t redrawMap(uint8_t rotation, uint8_t zoom)
 	coord2tile(lat, lon, &tx, &ty, zoom);
 	
 	//Render area settings, adjusted for rotation
-	const uint16_t renderW = rotation & 0x1 ? MAP_RENDER_W : MAP_RENDER_H;
-	const uint16_t renderH = rotation & 0x1 ? MAP_RENDER_H : MAP_RENDER_W;
-	const uint16_t renderX = rotation & 0x1 ? MAP_RENDER_X : MAP_RENDER_Y;
-	const uint16_t renderY = rotation & 0x1 ? MAP_RENDER_Y : MAP_RENDER_X;
+	const uint16_t renderW = MAP_RENDER_W;
+	const uint16_t renderH = MAP_RENDER_H;
+	const uint16_t renderX = screenInfo.rot & 0x1 ? MAP_RENDER_X : MAP_RENDER_Y;
+	const uint16_t renderY = screenInfo.rot & 0x1 ? MAP_RENDER_Y : MAP_RENDER_X;
 	
 	//tx and ty now have the tile value of the CENTER of the screen
 	//Shift them to the upper left corner
@@ -116,7 +116,7 @@ uint8_t redrawMap(uint8_t rotation, uint8_t zoom)
 	
 	//Load tiles and render to screen
 	//Set the window to our rendering area
-	ili9340_set_view(rotation, renderX, renderX + renderW - 1, renderY, renderY + renderH - 1);
+	ili9340_set_view(screenInfo.rot, renderX, renderX + renderW - 1, renderY, renderY + renderH - 1);
 	ILI9340_CS_ENABLE();
 	
 	//Put LCD into write-pixels-to-screen mode
@@ -263,7 +263,7 @@ uint8_t redrawMap(uint8_t rotation, uint8_t zoom)
 	
 	//Render the user position (right in middle of map render area)
 	//Set the window area to 
-	ili9340_set_view(rotation, renderX + renderW/2 - MAP_RENDER_USER_SIZE, renderX + renderW/2 + MAP_RENDER_USER_SIZE, renderY + renderH/2 - MAP_RENDER_USER_SIZE, renderY + renderH/2 + MAP_RENDER_USER_SIZE);
+	ili9340_set_renderarea(renderX + renderW/2 - MAP_RENDER_USER_SIZE, renderX + renderW/2 + MAP_RENDER_USER_SIZE - 1, renderY + renderH/2 - MAP_RENDER_USER_SIZE, renderY + renderH/2 + MAP_RENDER_USER_SIZE - 1);
 	ILI9340_CS_ENABLE();
 	
 	//Put LCD into write-pixels-to-screen mode

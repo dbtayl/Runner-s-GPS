@@ -30,12 +30,14 @@
 
 #include <inttypes.h>
 
+#include "font.h"
+
 //Uncomment to enable some debugging
 #define MAP_RENDER_DEBUG
 
 //How many pixels wide/tall the map render window is, in pixels
-#define MAP_RENDER_W 320
-#define MAP_RENDER_H 224
+#define MAP_RENDER_W (screenInfo.w)
+#define MAP_RENDER_H (screenInfo.h - FONT_H)
 
 //Where on the screen the map will be rendered (x,y offset of top-left map
 //corner from the top left corner of the screen, in pixels)
@@ -50,6 +52,6 @@
 #define MAP_RENDER_USER_COLOR 0xf800
 
 //Renders the map and user position based on GPS location
-uint8_t redrawMap(uint8_t rotation, uint8_t zoom);
+uint8_t redrawMap(uint8_t zoom);
 
 #endif

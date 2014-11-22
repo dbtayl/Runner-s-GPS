@@ -36,10 +36,12 @@
 #define FONT_FOREGROUND (uint16_t)0xffff
 #define FONT_BACKGROUND (uint16_t)0x0000
 
-void printStr(char* str, uint8_t len, uint16_t x, uint16_t y, uint8_t rot)
+void printStr(char* str, uint8_t len, uint16_t x, uint16_t y)
 {
 	//Configure writing area
-	ili9340_set_view(rot, x, x+len*FONT_W-1, y, y+FONT_H-1);
+	//ili9340_set_renderarea(x, x+len*FONT_W-1, y, y+FONT_H-1);
+	//FIXME: Debug
+	ili9340_set_view(screenInfo.rot, x, x+len*FONT_W-1, y, y+FONT_H-1);
 	
 	//Get ready to write data
 	ILI9340_CS_ENABLE();

@@ -41,8 +41,8 @@
 
 //The resolution of the LCD... Required for things to work properly
 //Defined as for rotation = 0, that is, "regular" portrait mode
-#define TFTWIDTH 240
-#define TFTHEIGHT 320
+#define TFTWIDTH_PHYS 240
+#define TFTHEIGHT_PHYS 320
 
 //0 is regular portrait, everything else is CW rotated from there
 //(90 is with ribbon cable on left of LCD)
@@ -50,6 +50,15 @@
 #define ROT_90	1
 #define ROT_180	2
 #define ROT_270 3
+
+typedef struct
+{
+	uint8_t rot;
+	uint16_t w;
+	uint16_t h;
+} ScreenInfo;
+
+extern ScreenInfo screenInfo;
 
 
 //Set to 1 to assume that the chip is always selected -> calls to change
@@ -112,7 +121,7 @@ void ili9340_reset();
 
 //Initializes the LCD. Defaults to portrait mode
 //Assumes pins already configured
-void ili9340_init(void);
+void ili9340_init(uint8_t rot);
 
 
 //Writes 'data' into register 'reg'

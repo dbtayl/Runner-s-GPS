@@ -54,6 +54,7 @@ FIL dataFile;
 //uint16_t cache[8192] __attribute__ ((section("RAM2")));
 
 void disableUnusedClocks();
+uint8_t showSplashScreen();
 
 int main()
 {
@@ -91,7 +92,7 @@ int main()
 	
 	//Initialize the LCD
 	Delay(10);
-	ili9340_init();
+	ili9340_init(DEFAULT_ROT);
 	
 	//Configure UART so we can debug
 	UART_CFG_Type cfg;
@@ -124,23 +125,6 @@ int main()
 	}
 	UART_Send(UART_0, (uint8_t*)"Card initialized\n\r", 18, BLOCKING);
 	
-	uint32_t cap = mmc_getsectors();
-	if(cap == 0)
-	{
-		UART_Send(UART_0, (uint8_t*)"No sectors\n\r", 12, BLOCKING);
-	}
-	cap >>= 11; //convert to MB
-	uint8_t buf[8];
-	buf[0] = cap / 100 + '0';
-	buf[1] = (cap % 100) / 10 + '0';
-	buf[2] = cap % 10 + '0';
-	buf[3] = ' ';
-	buf[4] = 'M';
-	buf[5] = 'B';
-	buf[6] = '\n';
-	buf[7] = '\r';
-	UART_Send(UART_0, buf, 8, BLOCKING);
-	
 	//Try to use FatFS
 	FRESULT res = f_mount(&sdCard, "0:", 1);
 	if(res != FR_OK)
@@ -159,96 +143,15 @@ int main()
 	
 	UART_Send(UART_0, (uint8_t*)"Mounted card\n\r", 14, BLOCKING);
 	
-	//Fill screen with black
-	ili9340_set_view(ROT_90, 0, 319, 0, 239);
-	ILI9340_CS_ENABLE();
-	ili9340_writeRegOnly(0x002c);
-	ILI9340_MODE_DATA();
-	ili9340_floodFill(0x0000, 320 * 240);
-	
-	//Open splash screen file
-	//12 (8.3) characters is the limit for this string, unless you enable LFN
-	if(f_open(&dataFile, "splash.bmp", FA_OPEN_EXISTING|FA_READ) != FR_OK)
+	//Render the spash screen
+	if(showSplashScreen())
 	{
-		UART_Send(UART_0, (uint8_t*)"splash failure\n\r", 16, BLOCKING);
+		UART_Send(UART_0, (uint8_t*)"Failed to show splash\n\r", 23, BLOCKING);
 		while(1)
 		{
 		}
 	}
-	//Render splash
-	{
-		//read splash size
-		uint32_t splashdim[2], br;
-		if(f_lseek(&dataFile, 0x12) != FR_OK)
-		{
-			UART_Send(UART_0, (uint8_t*)"no seek to w\n\r", 14, BLOCKING);
-			while(1)
-			{
-			}
-		}
-		if( f_read(&dataFile, splashdim, 8, &br) != FR_OK )
-		{
-			UART_Send(UART_0, (uint8_t*)"no read w/h\n\r", 13, BLOCKING);
-			while(1)
-			{
-			}
-		}
-		
-		//Bitmaps pack rows somewhat; probably not an issue for us, but hey
-		uint32_t rowsize = (16 * splashdim[0] + 31)>>5 * 4;
-		
-		if(splashdim[0] != 200)
-		{
-			UART_Send(UART_0, (uint8_t*)"Width wrong\n\r", 13, BLOCKING);
-			while(1)
-			{
-			}
-		}
-		
-		//Read pixel data offset
-		uint32_t pixel_offset;
-		if(f_lseek(&dataFile, 0x0a) != FR_OK)
-		{
-			UART_Send(UART_0, (uint8_t*)"no seek to data offset\n\r", 24, BLOCKING);
-			while(1)
-			{
-			}
-		}
-		if( f_read(&dataFile, &pixel_offset, 4, &br) != FR_OK )
-		{
-			UART_Send(UART_0, (uint8_t*)"no read data offset\n\r", 21, BLOCKING);
-			while(1)
-			{
-			}
-		}
-		if( f_lseek(&dataFile, pixel_offset) != FR_OK )
-		{
-			UART_Send(UART_0, (uint8_t*)"no seek to pixel offset\n\r", 25, BLOCKING);
-			while(1)
-			{
-			}
-		}
-		
-		//set position for splash image
-		ili9340_set_view(ROT_90, (TFTHEIGHT-splashdim[0])/2, (TFTHEIGHT-splashdim[0])/2 + splashdim[0] - 1, (TFTWIDTH-splashdim[1])/2, (TFTWIDTH-splashdim[1])/2 + splashdim[1] - 1);
-		
-		//Make sure we're in pixel-writing mode
-		ILI9340_CS_ENABLE();
-		ili9340_writeRegOnly(0x002c);
-		ILI9340_MODE_DATA();
-		
-		//Read and render pixels		
-		#define UNROLL_VAL 20
-		uint16_t splashcache[UNROLL_VAL];
-		int i;
-		for(i = 0; i < splashdim[1]*splashdim[0]/UNROLL_VAL; i++)
-		{
-			f_read(&dataFile, splashcache, UNROLL_VAL*2, &br);
-			ili9340_writeDataMultiple(splashcache, UNROLL_VAL);
-		}
-		
-	}
-	ILI9340_CS_DISABLE();
+	
 	
 	//FIXME: Probably a better spot for this
 #if DIST_METHOD == DIST_METHOD_LINEAR
@@ -258,10 +161,9 @@ int main()
 	//turn backlight on
 	DAC_UpdateValue(0, DEFAULT_LCD_BACKLIGHT);
 	#define WAITMSGLEN 20
-	uint8_t rot = ROT_90;
-	uint16_t x = (TFTHEIGHT-((WAITMSGLEN+3)*FONT_W))/2;
-	uint16_t y = 216;
-	printStr("WAITING FOR GPS LOCK", WAITMSGLEN, x, y, rot);
+	uint16_t x = (screenInfo.w-((WAITMSGLEN+3)*FONT_W))/2;
+	uint16_t y = screenInfo.h - FONT_H;
+	printStr("WAITING FOR GPS LOCK", WAITMSGLEN, x, y);
 	x += FONT_W*WAITMSGLEN;
 	
 	configurePENIRQ();
@@ -309,13 +211,13 @@ int main()
 	
 	while(!gpsData.valid)
 	{
-		printStr("   ", 3, x, y, rot);
+		printStr("   ", 3, x, y);
 		Delay(1000);
-		printStr(".  ", 3, x, y, rot);
+		printStr(".  ", 3, x, y);
 		Delay(1000);
-		printStr(".. ", 3, x, y, rot);
+		printStr(".. ", 3, x, y);
 		Delay(1000);
-		printStr("...", 3, x, y, rot);
+		printStr("...", 3, x, y);
 		Delay(1000);
 	}
 	
@@ -329,8 +231,8 @@ int main()
 	
 	#define LOST_GPS_MSG "LOST GPS LOCK"
 	#define LOST_GPS_MSG_LEN 13
-	x = (TFTHEIGHT-LOST_GPS_MSG_LEN*FONT_W)/2;
-	y = (TFTWIDTH-FONT_H)/2;
+	x = (screenInfo.w-LOST_GPS_MSG_LEN*FONT_W)/2;
+	y = (screenInfo.h-FONT_H)/2;
 	
 	//Keep track of 
 	#define NO_LAT_LON 999.0f
@@ -347,8 +249,8 @@ int main()
 	//h:mm:ss: 7 chars
 	//Space between the two: 4
 	#define RUNINFO_LEN 18
-	uint16_t RUNINFO_X = (TFTHEIGHT - RUNINFO_LEN*FONT_W)/2;
-	#define RUNINFO_Y 224
+	uint16_t RUNINFO_X = (screenInfo.w - RUNINFO_LEN*FONT_W)/2;
+	#define RUNINFO_Y (screenInfo.h - FONT_H)
 	uint8_t runInfo[RUNINFO_LEN];
 	//0 and 1 are km
 	runInfo[2] = '.';
@@ -373,7 +275,7 @@ int main()
 		//If we don't have a GPS lock, display an error
 		if(!gpsData.valid)
 		{
-			printStr(LOST_GPS_MSG, LOST_GPS_MSG_LEN, x, y, rot);
+			printStr(LOST_GPS_MSG, LOST_GPS_MSG_LEN, x, y);
 			lastLat = NO_LAT_LON;
 			lastLon = NO_LAT_LON;
 			
@@ -401,34 +303,7 @@ int main()
 					//gpsData.lat/lon started as- an unknown value
 					if(delta < 0.1f)
 					{
-						//FIXME: Debug
-						runInfo[5] = 'K';
 						distance += delta;
-					}
-					//FIXME: Debug
-					else
-					{
-						if(delta < 1.0)
-						{
-							UART_Send(UART_0, "1\n\r", 3, BLOCKING);
-						}
-						else if(delta < 10.0)
-						{
-							UART_Send(UART_0, "10\n\r", 4, BLOCKING);
-						}
-						else if(delta < 100.0)
-						{
-							UART_Send(UART_0, "100\n\r", 5, BLOCKING);
-						}
-						else if(delta < 1000.0)
-						{
-							UART_Send(UART_0, "1000\n\r", 6, BLOCKING);
-						}
-						else
-						{
-							UART_Send(UART_0, "1000+\n\r", 7, BLOCKING);
-						}
-						runInfo[5] = 'U';
 					}
 				}
 				
@@ -436,7 +311,7 @@ int main()
 				if(isLcdBlOn())
 				{
 					CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, ENABLE);
-					redrawMap(ROT_90, 16);
+					redrawMap(16);
 					CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, DISABLE);
 					
 					//Update info string
@@ -455,7 +330,7 @@ int main()
 					runInfo[11] = (uint8_t)(sec / 3600) + '0';
 					
 					//Print info to bottom of screen
-					printStr(runInfo, RUNINFO_LEN, RUNINFO_X, RUNINFO_Y, ROT_90);
+					printStr(runInfo, RUNINFO_LEN, RUNINFO_X, RUNINFO_Y);
 				}
 				
 				sec++;
@@ -483,6 +358,83 @@ void disableUnusedClocks()
 	CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCRTC, DISABLE);
 	
 	return;
+}
+
+uint8_t showSplashScreen()
+{
+	//Fill screen with black
+	ili9340_set_renderarea(screenInfo.rot, screenInfo.w - 1, 0, screenInfo.h - 1);
+	ILI9340_CS_ENABLE();
+	ili9340_writeRegOnly(0x002c);
+	ILI9340_MODE_DATA();
+	ili9340_floodFill(0x0000, 320 * 240);
+	
+	//Open splash screen file
+	//12 (8.3) characters is the limit for this string, unless you enable LFN
+	if(f_open(&dataFile, "splash.bmp", FA_OPEN_EXISTING|FA_READ) != FR_OK)
+	{
+		UART_Send(UART_0, (uint8_t*)"splash failure\n\r", 16, BLOCKING);
+		return 1;
+	}
+	//Render splash
+	{
+		//read splash size
+		uint32_t splashdim[2], br;
+		if(f_lseek(&dataFile, 0x12) != FR_OK)
+		{
+			UART_Send(UART_0, (uint8_t*)"no seek to w\n\r", 14, BLOCKING);
+			return 2;
+		}
+		if( f_read(&dataFile, splashdim, 8, &br) != FR_OK )
+		{
+			UART_Send(UART_0, (uint8_t*)"no read w/h\n\r", 13, BLOCKING);
+			return 3;
+		}
+		
+		//Bitmaps pack rows somewhat; probably not an issue for us, but hey
+		uint32_t rowsize = (16 * splashdim[0] + 31)>>5 * 4;
+		
+		//Read pixel data offset
+		uint32_t pixel_offset;
+		if(f_lseek(&dataFile, 0x0a) != FR_OK)
+		{
+			UART_Send(UART_0, (uint8_t*)"Failed to seek to data offset\n\r", 31, BLOCKING);
+			return 4;
+		}
+		if( f_read(&dataFile, &pixel_offset, 4, &br) != FR_OK )
+		{
+			UART_Send(UART_0, (uint8_t*)"Failed to read data offset\n\r", 28, BLOCKING);
+			return 5;
+		}
+		if( f_lseek(&dataFile, pixel_offset) != FR_OK )
+		{
+			UART_Send(UART_0, (uint8_t*)"Failed to seek to pixel offset\n\r", 32, BLOCKING);
+			return 6;
+		}
+		
+		//set position for splash image
+		ili9340_set_renderarea((screenInfo.w-splashdim[0])/2, (screenInfo.w-splashdim[0])/2 + splashdim[0] - 1, (screenInfo.h-splashdim[1])/2, (screenInfo.h-splashdim[1])/2 + splashdim[1] - 1);
+		
+		//Make sure we're in pixel-writing mode
+		ILI9340_CS_ENABLE();
+		ili9340_writeRegOnly(0x002c);
+		ILI9340_MODE_DATA();
+		
+		//Read and render pixels	
+		//FIXME: Ignores row width...	
+		#define UNROLL_VAL 20
+		uint16_t splashcache[UNROLL_VAL];
+		int i;
+		for(i = 0; i < splashdim[1]*splashdim[0]/UNROLL_VAL; i++)
+		{
+			f_read(&dataFile, splashcache, UNROLL_VAL*2, &br);
+			ili9340_writeDataMultiple(splashcache, UNROLL_VAL);
+		}
+		
+	}
+	ILI9340_CS_DISABLE();
+	
+	return 0;
 }
 
 
