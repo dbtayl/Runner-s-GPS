@@ -1,0 +1,7 @@
+-Actually have the touchscreen do something useful
+	-have start/stop button for tracking
+	-be able to turn GPS on/off
+-Add SD logging
+-Cache map chunks for faster rendering
+-Have rotation function set variables for current screen width and height
+	-Rename TFTWIDTH and TFTHEIGHT to ..._PHYS

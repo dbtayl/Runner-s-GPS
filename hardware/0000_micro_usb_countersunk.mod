@@ -1,0 +1,125 @@
+PCBNEW-LibModule-V1  Mon 27 Jan 2014 01:00:54 PM CST
+# encoding utf-8
+Units mm
+$INDEX
+0000_microusb_countersunk
+$EndINDEX
+$MODULE 0000_microusb_countersunk
+Po 0 0 0 15 52E6ACD3 00000000 ~~
+Li 0000_microusb_countersunk
+Sc 0
+AR /510F166D/5248540C
+Op 0 0 0
+T0 0 0 1.5 1.5 0 0.15 N V 21 N "U9"
+T1 0 0 1.5 1.5 0 0.15 N V 21 N "MICRO-B_USB"
+DS -3.95 -3.65 3.95 -3.65 0.15 21
+DS 3.95 -3.65 3.95 2.1 0.15 21
+DS 3.95 2.1 -3.95 2.1 0.15 21
+DS -3.95 2.1 -3.95 -3.65 0.15 21
+$PAD
+Sh "" R 1.41 2.6 0 0 1800
+Dr 0 0 0 O 0 0
+At SMD N 00888000
+Ne 0 ""
+Po 4.845 -4.1
+$EndPAD
+$PAD
+Sh "" R 3.75 1.55 0 0 1800
+Dr 0 0 0 O 0 0
+At SMD N 00888000
+Ne 0 ""
+Po 3.675 -4.625
+$EndPAD
+$PAD
+Sh "" O 0.8 1.97 0 0 0
+Dr 0.8 0 0 O 0.8 1.97
+At STD N 00E0FFFF
+Ne 0 ""
+Po 4.875 -4.1
+$EndPAD
+$PAD
+Sh "" O 0.8 1.97 0 0 0
+Dr 0.8 0 0 O 0.8 1.97
+At STD N 00E0FFFF
+Ne 0 ""
+Po -4.9 -4.09
+$EndPAD
+$PAD
+Sh "" O 0.8 2.37 0 0 0
+Dr 0.8 0 0 O 0.8 2.37
+At STD N 00E0FFFF
+Ne 0 ""
+Po -4.875 -0.1
+$EndPAD
+$PAD
+Sh "" R 1.41 2.85 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 0 ""
+Po -4.875 -0.1
+$EndPAD
+$PAD
+Sh "5" R 0.4 1.4 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 1 "GND"
+Po -1.3 -4.55
+$EndPAD
+$PAD
+Sh "1" R 0.4 1.4 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 2 "V_USB"
+Po 1.3 -4.55
+$EndPAD
+$PAD
+Sh "2" R 0.4 1.4 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 0 ""
+Po 0.65 -4.55
+$EndPAD
+$PAD
+Sh "4" R 0.4 1.4 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 0 ""
+Po -0.65 -4.55
+$EndPAD
+$PAD
+Sh "3" R 0.4 1.4 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 0 ""
+Po 0 -4.55
+$EndPAD
+$PAD
+Sh "" R 1.41 2.85 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 0 ""
+Po 4.875 -0.1
+$EndPAD
+$PAD
+Sh "" O 0.8 2.37 0 0 0
+Dr 0.8 0 0 O 0.8 2.37
+At STD N 00E0FFFF
+Ne 0 ""
+Po 4.875 -0.1
+$EndPAD
+$PAD
+Sh "" R 3.75 1.55 0 0 0
+Dr 0 0 0 O 0 0
+At SMD N 00888000
+Ne 0 ""
+Po -3.675 -4.625
+$EndPAD
+$PAD
+Sh "" R 1.41 2.6 0 0 0
+Dr 0 0 0 O 0 0
+At SMD N 00888000
+Ne 0 ""
+Po -4.845 -4.1
+$EndPAD
+$EndMODULE 0000_microusb_countersunk
+$EndLIBRARY
