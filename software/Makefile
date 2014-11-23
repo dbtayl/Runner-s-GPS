@@ -24,7 +24,7 @@ CFLAGS			+= -O$(OPTIM)
 CFLAGS			+= -mapcs-frame 
 CFLAGS			+= -D__thumb2__=1 
 CFLAGS	 		+= -msoft-float 
-CFLAGS	 		+= -mfloat-abi=soft 
+#CFLAGS	 		+= -mfloat-abi=soft 
 CFLAGS			+= -gdwarf-2 
 CFLAGS   		+= -mno-sched-prolog 
 CFLAGS			+= -fno-hosted 
@@ -85,7 +85,7 @@ LDFLAGS 		+= -nostdlib
 LDFLAGS			+= -T $(LD_SCRIPT)
 LDFLAGS			+= -mcpu=$(CPU)
 LDFLAGS	 		+= -msoft-float 
-LDFLAGS	 		+= -mfloat-abi=soft 
+#LDFLAGS	 		+= -mfloat-abi=soft 
 LDFLAGS	 		+= -mthumb 
 
 
