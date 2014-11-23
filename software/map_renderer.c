@@ -165,12 +165,12 @@ uint8_t redrawMap(uint8_t zoom)
 			//Get offset to real data
 			f_lseek(&(tiles[i]), 0xa);
 #ifdef MAP_RENDER_DEBUG
-			if(f_read(&(tiles[i]), &(pixelDataOffset[i]), 4, &br) != FR_OK) //NOTE: Makes endianness assumptions
+			if(f_read(&(tiles[i]), &(pixelDataOffset[i]), 4, (UINT*)&br) != FR_OK) //NOTE: Makes endianness assumptions
 			{
 				return 4;
 			}
 #else
-			f_read(&(tiles[i]), &(pixelDataOffset[i]), 4, &br); //NOTE: Makes endianness assumptions
+			f_read(&(tiles[i]), &(pixelDataOffset[i]), 4, (UINT*)&br); //NOTE: Makes endianness assumptions
 #endif
 			
 			//Move back up to zoom directory
@@ -237,12 +237,12 @@ uint8_t redrawMap(uint8_t zoom)
 				//Read in data
 				//NOTE: Reading takes up to ~3.5 ms, typically around 1.7ms
 #ifdef MAP_RENDER_DEBUG
-				if(f_read(&(tiles[k]), pixelData, readCounts[k]*2, &br) != FR_OK)
+				if(f_read(&(tiles[k]), pixelData, readCounts[k]*2, (UINT*)&br) != FR_OK)
 				{
 					return 5;
 				}
 #else
-				f_read(&(tiles[k]), pixelData, readCounts[k]*2, &br);
+				f_read(&(tiles[k]), pixelData, readCounts[k]*2, (UINT*)&br);
 #endif
 
 				ili9340_writeDataMultiple(pixelData, readCounts[k]);

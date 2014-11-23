@@ -38,7 +38,7 @@ DSTATUS disk_status (
 	uint32_t t = mmc_isinit();
 	if(!t)
 	{
-		UART_Send(UART_0, "disk_status error\n\r", 19, BLOCKING);
+		UART_Send(UART_0, (uint8_t*)"disk_status error\n\r", 19, BLOCKING);
 		stat |= STA_NOINIT;
 	}
 
@@ -70,7 +70,7 @@ DSTATUS disk_initialize (
 	int t = mmc_init_card();
 	if(t)
 	{
-		UART_Send(UART_0, "disk_init error\n\r", 17, BLOCKING);
+		UART_Send(UART_0, (uint8_t*)"disk_init error\n\r", 17, BLOCKING);
 		stat |= STA_NODISK;
 	}
 
@@ -101,7 +101,7 @@ DRESULT disk_read (
 	result = mmc_readmultiplesector(buff, sector, count);
 	if(result)
 	{
-		UART_Send(UART_0, "disk_read error\n\r", 17, BLOCKING);
+		UART_Send(UART_0, (uint8_t*)"disk_read error\n\r", 17, BLOCKING);
 		//FIXME: Return some meaningful error
 		return RES_ERROR;
 	}
@@ -135,7 +135,7 @@ DRESULT disk_write (
 	int32_t result = mmc_writemultiplesector(buff, sector, count);
 	if(result)
 	{
-		UART_Send(UART_0, "disk_write error\n\r", 18, BLOCKING);
+		UART_Send(UART_0, (uint8_t*)"disk_write error\n\r", 18, BLOCKING);
 		//FIXME: Return some meaningful error
 		return RES_ERROR;
 	}

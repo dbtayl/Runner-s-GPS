@@ -33,6 +33,7 @@
 //distance mostly changing in lon, at least for small changes around
 //where I run.
 #if DIST_METHOD == DIST_METHOD_HAVERSINE
+#error You sure you want to use this?
 
 //Haversien formula, no sine approximation. Uses floats, so still accumulates
 //error that way.
@@ -55,6 +56,7 @@ float distLatLon(float lat0, float lon0, float lat1, float lon1)
 }
 
 #elif DIST_METHOD == DIST_METHOD_HAVERSINE_APPROX
+#error You sure you want to use this?
 
 //Haversine formula, except approximating sin(x) = x. As this is likely
 //to only ever deal with small values fed to sine, this works well and
@@ -99,7 +101,7 @@ void populateLatLonList()
 //changes in distance; doesn't use a lot of floating-point calculations
 float distLatLon(float lat0, float lon0, float lat1, float lon1)
 {
-	int idx = (int)(lat0 * 2 + 0.5f);
+	int idx = (int)(abs(lat0) * 2 + 0.5f);
 	float dlat = latf[idx] * (lat1 - lat0);
 	float dlon = lonf[idx] * (lon1 - lon0);
 	

@@ -125,7 +125,7 @@ void GPS_Stop(void)
 void GPS_Sleep()
 {
 	//Send GPS Sleep command
-	uint8_t* sleepCmd = "$PMTK161,0*28\r\n";
+	uint8_t* sleepCmd = (uint8_t*)"$PMTK161,0*28\r\n";
 	UART_Send(UART_3, sleepCmd, 15, BLOCKING);
 	
 	CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCUART3, DISABLE);

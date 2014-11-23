@@ -170,9 +170,11 @@ int main()
 	
 	GPS_Init(9600);
 	gpsData.valid = 0;
+		
 	
 	//FIXME: Testing touchscreen
-	/*TSC2046_init();
+	/*CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, DISABLE);
+	TSC2046_init();
 	Point tp = {0x0000,0x0000};
 	while (1)
 	{
@@ -182,6 +184,11 @@ int main()
 		#define YMAX 3667
 		
 		tp = readTSC2046();
+		
+		uint8_t buf[20];
+		uint8_t i = itoau(tp.x, buf);
+		UART_Send(UART_0, buf, i, BLOCKING);
+		
 		tp.x = 320 - (uint16_t)((float)(tp.x - XMIN) * 320.0f / (float)(XMAX-XMIN));
 		tp.y = (uint16_t)((float)(tp.y - YMIN) * 240.0f / (float)(YMAX-YMIN));
 		
@@ -248,6 +255,7 @@ int main()
 	//xx.x km: 7 chars
 	//h:mm:ss: 7 chars
 	//Space between the two: 4
+	
 	#define RUNINFO_LEN 18
 	uint16_t RUNINFO_X = (screenInfo.w - RUNINFO_LEN*FONT_W)/2;
 	#define RUNINFO_Y (screenInfo.h - FONT_H)
@@ -267,7 +275,6 @@ int main()
 	//13 and 14 are minutes
 	runInfo[15] = ':';
 	//16 and 17 are seconds
-	
 	
 	
 	while(1)
@@ -308,6 +315,7 @@ int main()
 				}
 				
 				//Only bother redrawing the screen if the screen is on
+				//FIXME: should really power down LCD when BL is off; this probably isn't the place to do that
 				if(isLcdBlOn())
 				{
 					CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, ENABLE);
@@ -330,7 +338,7 @@ int main()
 					runInfo[11] = (uint8_t)(sec / 3600) + '0';
 					
 					//Print info to bottom of screen
-					printStr(runInfo, RUNINFO_LEN, RUNINFO_X, RUNINFO_Y);
+					printStr((int8_t*)runInfo, RUNINFO_LEN, RUNINFO_X, RUNINFO_Y);
 				}
 				
 				sec++;
@@ -385,7 +393,7 @@ uint8_t showSplashScreen()
 			UART_Send(UART_0, (uint8_t*)"no seek to w\n\r", 14, BLOCKING);
 			return 2;
 		}
-		if( f_read(&dataFile, splashdim, 8, &br) != FR_OK )
+		if( f_read(&dataFile, splashdim, 8, (UINT*)&br) != FR_OK )
 		{
 			UART_Send(UART_0, (uint8_t*)"no read w/h\n\r", 13, BLOCKING);
 			return 3;
@@ -401,7 +409,7 @@ uint8_t showSplashScreen()
 			UART_Send(UART_0, (uint8_t*)"Failed to seek to data offset\n\r", 31, BLOCKING);
 			return 4;
 		}
-		if( f_read(&dataFile, &pixel_offset, 4, &br) != FR_OK )
+		if( f_read(&dataFile, &pixel_offset, 4, (UINT*)&br) != FR_OK )
 		{
 			UART_Send(UART_0, (uint8_t*)"Failed to read data offset\n\r", 28, BLOCKING);
 			return 5;
@@ -427,7 +435,7 @@ uint8_t showSplashScreen()
 		int i;
 		for(i = 0; i < splashdim[1]*splashdim[0]/UNROLL_VAL; i++)
 		{
-			f_read(&dataFile, splashcache, UNROLL_VAL*2, &br);
+			f_read(&dataFile, splashcache, UNROLL_VAL*2, (UINT*)&br);
 			ili9340_writeDataMultiple(splashcache, UNROLL_VAL);
 		}
 		

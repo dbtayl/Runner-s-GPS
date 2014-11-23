@@ -54,6 +54,7 @@
 //FIXME: Needs to actually DO something (probably just set a flag so the main thread can handle it)
 //FIXME: Need to configure priority
 //FIXME: Need to allow this to wake up device from sleep
+//FIXME: Shoud set a flat for putting the LCD to sleep/waking it up
 void EINT0_IRQHandler(void)
 {
 	EXTI_ClearEXTIFlag(EXTI_EINT0);
@@ -62,6 +63,7 @@ void EINT0_IRQHandler(void)
 	if(isLcdBlOn())
 	{
 		DAC_UpdateValue(0, 0);
+		
 	}
 	//Otherwise, turn it on
 	else
@@ -95,6 +97,10 @@ Point readTSC2046()
 		//remove write from FIFO
 		dummy = LPC_SSP1->DR;
 		
+		//FIXME: Debug
+		//Delay to allow conversion to happen
+		Delay(10);
+		
 		//Read back the 2 bytes
 		LPC_SSP1->DR = 0x00;
 		while (LPC_SSP1->SR & 0x10);
@@ -119,6 +125,10 @@ Point readTSC2046()
 		
 		//remove write from FIFO
 		dummy = LPC_SSP1->DR;
+		
+		//FIXME: Debug
+		//Delay to allow conversion to happen
+		Delay(10);
 		
 		//Read back the 2 bytes
 		LPC_SSP1->DR = 0x00;
@@ -156,6 +166,8 @@ uint8_t TSC2046_init()
 	//FIXME: These values may not be right
 	SSP_CFG_Type cfg;
 	SSP_ConfigStructInit(&cfg);
+	cfg.ClockRate = 100000;
+	cfg.CPHA = SSP_CPHA_SECOND;
 	
 	SSP_Init(LPC_SSP1, &cfg);
 	
