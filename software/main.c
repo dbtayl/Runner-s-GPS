@@ -31,6 +31,7 @@
 #include "lpc177x_8x_pinsel.h"
 #include "lpc177x_8x_timer.h"
 #include "lpc177x_8x_uart.h"
+#include "lpc177x_8x_ssp.h"
 #include "fatfs10b/ff.h"
 #include "ili9340.h"
 #include "lpc177x_8x_clkpwr.h"
@@ -44,6 +45,20 @@
 #include "map_renderer.h"
 #include "tsc2046.h"
 #include "latlondist.h"
+
+//States used in the main loop
+//No GPS lock
+#define STATE_NOLOCK		0
+
+//Have a lock, but no run started
+#define STATE_LOCK_IDLE		1
+
+//Currently tracking a run
+#define STATE_LOG			2
+
+//Had a lock, lost it
+#define STATE_LOSTLOCK		3
+
 
 //FatFS stuff
 FATFS sdCard;
@@ -170,27 +185,51 @@ int main()
 	
 	GPS_Init(9600);
 	gpsData.valid = 0;
-		
+	
+	//FIXME: Debug
+	UART_Send(UART_0, "GPS init done\n\r", 15, BLOCKING);
 	
 	//FIXME: Testing touchscreen
-	/*CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, DISABLE);
+	//CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, DISABLE);
 	TSC2046_init();
-	Point tp = {0x0000,0x0000};
+	/*Point tp = {0x0000,0x0000};
 	while (1)
 	{
-		#define XMIN 442
-		#define XMAX 3543
-		#define YMIN 460
-		#define YMAX 3667
+		#define XMIN 300
+		#define XMAX 3850
+		#define YMIN 300
+		#define YMAX 3850
 		
 		tp = readTSC2046();
 		
-		uint8_t buf[20];
-		uint8_t i = itoau(tp.x, buf);
-		UART_Send(UART_0, buf, i, BLOCKING);
+		//uint8_t buf[20];
+		//buf[3] = tp.x%10 + '0';
+		//tp.x /= 10;
+		//buf[2] = tp.x%10 + '0';
+		//tp.x /= 10;
+		//buf[1] = tp.x%10 + '0';
+		//tp.x /= 10;
+		//buf[0] = tp.x%10 + '0';
+		//buf[4] = ',';
+		//buf[5] = ' ';
+		//buf[9] = tp.y%10 + '0';
+		//tp.y /= 10;
+		//buf[8] = tp.y%10 + '0';
+		//tp.y /= 10;
+		//buf[7] = tp.y%10 + '0';
+		//tp.y /= 10;
+		//buf[6] = tp.y%10 + '0';
+		//buf[10] = '\n';
+		//buf[11] = '\r';
+		//UART_Send(UART_0, buf, 12, BLOCKING);
 		
-		tp.x = 320 - (uint16_t)((float)(tp.x - XMIN) * 320.0f / (float)(XMAX-XMIN));
-		tp.y = (uint16_t)((float)(tp.y - YMIN) * 240.0f / (float)(YMAX-YMIN));
+		
+		uint16_t tmpx = tp.x;
+		tp.x = (uint16_t)((float)(tp.y - XMIN) * 320.0f / (float)(XMAX-XMIN) + 0.5f);
+		tp.y = 240 - (uint16_t)((float)(tmpx - YMIN) * 240.0f / (float)(YMAX-YMIN) + 0.5f);
+		
+		tp.x = tp.x >= 320 ? 319 : tp.x;
+		tp.y = tp.y >= 240 ? 239 : tp.y;
 		
 		uint16_t endx = tp.x + 4;
 		uint16_t endy = tp.y + 4;
@@ -198,17 +237,17 @@ int main()
 		
 		//Set the cursor to the location given
 		ILI9340_CS_ENABLE();
-		ili9340_writeReg(0x002A,0x0000);				//column address set
+		ili9340_writeReg(0x002A,(tp.x>>8)&0x00ff);				//column address set
 			ili9340_writeData(tp.x&0x00ff);				//start 0x0000
-			ili9340_writeData(0x0000);
+			ili9340_writeData((endx>>8)&0x00ff);
 			ili9340_writeData(endx&0x00ff);				//end 0x00EF
-		ili9340_writeReg(0x002B,tp.y>>8);				//page address set
+		ili9340_writeReg(0x002B,(tp.y>>8)&0x00ff);				//page address set
 			ili9340_writeData(tp.y&0x00ff);				//start 0x0000
-			ili9340_writeData(endy>>8);
+			ili9340_writeData((endy>>8)&0x00ff);
 			ili9340_writeData(endy&0x00ff);				//end 0x013F
 			
 		//Draw a pixel
-		ili9340_writeReg(0x002c, 0x07E0); //Write a pixel
+		ili9340_writeReg(0x002c, 0xf800); //Write a pixel
 		ILI9340_CS_DISABLE();
 	}*/
 	
@@ -216,8 +255,11 @@ int main()
 	//Save some power on DMA
 	CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, DISABLE);
 	
+	
 	while(!gpsData.valid)
 	{
+		//FIXME: Debug
+		UART_Send(UART_0, "Wait for lock...\n\r", 18, BLOCKING);
 		printStr("   ", 3, x, y);
 		Delay(1000);
 		printStr(".  ", 3, x, y);
@@ -277,8 +319,86 @@ int main()
 	//16 and 17 are seconds
 	
 	
+	//FIXME: Need to handle screen touches in here somewhere
+	uint8_t state = STATE_NOLOCK;
 	while(1)
-	{		
+	{
+		//No lock yet- show waiting for GPS lock screen
+		//FIXME: Should probably allow panning of map or something
+		//FIXME: This state will never really happen, as we don't go past the boot screen until we have a lock at the moment
+		if(state == STATE_NOLOCK)
+		{
+			UART_Send(UART_0, "NOLOCK\n\r", 8, BLOCKING);
+			//If we have a GPS lock, move into LOCK_IDLE state
+			if(gpsData.valid)
+			{
+				state = STATE_LOCK_IDLE;
+			}
+		} //STATE_NOLOCK
+		
+		else if(state == STATE_LOCK_IDLE)
+		{
+			UART_Send(UART_0, "LOCKIDLE\n\r", 10, BLOCKING);
+			//If we lost our lock, go to LOST_LOCK state
+			if(!gpsData.valid)
+			{
+				state = STATE_LOSTLOCK;
+			}
+			
+			//Otherwise, update the map if the screen is on
+			if(gpsUpdated)
+			{
+				gpsUpdated = 0;
+				if(isLcdBlOn())
+				{
+					CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, ENABLE);
+					redrawMap(16);
+					CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, DISABLE);
+				}
+			}
+			
+			//FIXME: Remove
+			/*runInfo[1] = ((uint8_t)(gpsData.lat))%10 + '0';
+			runInfo[0] = (uint8_t)(gpsData.lat/10.0f) + '0';
+			runInfo[8] = ((uint8_t)(-gpsData.lon))%10 + '0';
+			runInfo[7] = (uint8_t)(-gpsData.lon/10.0f) + '0';
+			printStr((int8_t*)runInfo, RUNINFO_LEN, RUNINFO_X, RUNINFO_Y);*/
+			if(ret)
+			{
+				uint8_t foo = ret + '0';
+				UART_Send(UART_0, "ret:", 4, BLOCKING);
+				UART_Send(UART_0, &foo, 1, BLOCKING);
+				UART_Send(UART_0,"\r\n", 2, BLOCKING);
+			}
+			
+		} //STATE_LOCK_IDLE
+		
+		else if(state == STATE_LOG)
+		{
+			//FIXME: update deltas, refresh screen, write to log file
+		}
+		
+		else if(state == STATE_LOSTLOCK)
+		{
+			if(gpsData.valid)
+			{
+				state = STATE_LOCK_IDLE;
+			}
+			printStr(LOST_GPS_MSG, LOST_GPS_MSG_LEN, x, y);
+		}
+		
+		//Unknown state; go back to NOLOCK
+		else
+		{
+			state = STATE_NOLOCK;
+		}
+		
+		
+		//Regardless of state, go to sleep
+		CLKPWR_Sleep();
+		
+		
+		/*
 		//If we don't have a GPS lock, display an error
 		if(!gpsData.valid)
 		{
@@ -346,7 +466,7 @@ int main()
 				lastLon = gpsData.lon;
 			}
 			CLKPWR_Sleep();
-		}
+		}*/
 	}
 	
 	return 0;
