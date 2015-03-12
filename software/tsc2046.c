@@ -76,6 +76,9 @@ void EINT0_IRQHandler(void)
 Point readTSC2046()
 {
 	Point pos;
+	//FIXME: Debug
+	pos.x = 123;
+	pos.y = 456;
 	
 	//Start at 2 to basically introduce rounding
 	uint16_t x = 2;
@@ -87,7 +90,6 @@ Point readTSC2046()
 	for(i = 0; i < 4; i++)
 	{
 		TSC2046_CS_ENABLE();
-		
 		while (LPC_SSP1->SR & 0x10);
 		
 		//Write byte to read X (blocking operation)
@@ -96,10 +98,6 @@ Point readTSC2046()
 		
 		//remove write from FIFO
 		dummy = LPC_SSP1->DR;
-		
-		//FIXME: Debug
-		//Delay to allow conversion to happen
-		Delay(10);
 		
 		//Read back the 2 bytes
 		LPC_SSP1->DR = 0x00;
@@ -125,10 +123,6 @@ Point readTSC2046()
 		
 		//remove write from FIFO
 		dummy = LPC_SSP1->DR;
-		
-		//FIXME: Debug
-		//Delay to allow conversion to happen
-		Delay(10);
 		
 		//Read back the 2 bytes
 		LPC_SSP1->DR = 0x00;
@@ -166,14 +160,22 @@ uint8_t TSC2046_init()
 	//FIXME: These values may not be right
 	SSP_CFG_Type cfg;
 	SSP_ConfigStructInit(&cfg);
-	cfg.ClockRate = 100000;
+	cfg.Databit = SSP_DATABIT_8;
+	cfg.Mode = SSP_MASTER_MODE;
+	cfg.FrameFormat = SSP_FRAME_SPI;
 	cfg.CPHA = SSP_CPHA_SECOND;
+	cfg.CPOL = SSP_CPOL_LO;
 	
-	SSP_Init(LPC_SSP1, &cfg);
+	cfg.ClockRate = 100000;
 	
 	//Configure SSP pins
 	PINSEL_ConfigPin(0, 13, 2); //MOSI
 	PINSEL_ConfigPin(0, 12, 2); //MISO
+	//PINSEL_ConfigPin(0, 14, 0); //CS- manual control
+	PINSEL_ConfigPin(0, 7, 2);  //CLK
+	
+	SSP_Init(LPC_SSP1, &cfg);
+	SSP_Cmd(LPC_SSP1, ENABLE);
 		
 	//FIXME: Set up PENIRQ (P0[29])
 	//FIXME: This line is NOT just what we need- use functions in lpc177x_8x_exti.c

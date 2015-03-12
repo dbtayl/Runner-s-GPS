@@ -29,6 +29,6 @@
 #define ATOI_H
 
 unsigned int atoiu(const char* a);
-char* itoau(unsigned int i, char* a);
+unsigned int itoau(unsigned int i, char* a);
 
 #endif

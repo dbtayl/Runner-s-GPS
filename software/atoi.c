@@ -47,7 +47,7 @@ unsigned int atoiu(const char* a)
 }
 
 
-char* itoau(unsigned int i, char* a)
+unsigned int itoau(unsigned int i, char* a)
 {
 	uint8_t l = log10f(i);
 			
@@ -59,5 +59,5 @@ char* itoau(unsigned int i, char* a)
 	}
 	a[c] = '\0';
 	
-	return a;
+	return l;
 }
