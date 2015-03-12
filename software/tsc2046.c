@@ -50,6 +50,9 @@
 #define TSC2046_CS_ENABLE() LPC_GPIO0->CLR = 1<<14
 
 
+uint8_t touchFlag;
+
+
 //Handles the PENIRQ input
 //FIXME: Needs to actually DO something (probably just set a flag so the main thread can handle it)
 //FIXME: Need to configure priority

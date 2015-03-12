@@ -133,7 +133,8 @@ uint8_t redrawMap(uint8_t zoom)
 		for(i = 0; i < tilesX; i++)
 		{
 #ifdef MAP_RENDER_DEBUG
-			if(f_chdir(itoau((txi + i) % pow2zoom, buf)) != FR_OK)
+			itoau((txi + i) % pow2zoom, buf);
+			if(f_chdir(buf) != FR_OK)
 			{
 				return 2;
 			}
@@ -151,12 +152,17 @@ uint8_t redrawMap(uint8_t zoom)
 			buf[k++] = 'm';
 			buf[k++] = 'p';
 			buf[k] = '\0';
+#ifdef MAP_RENDER_DEBUG
+			UART_Send(UART_0, buf, k+1, BLOCKING);
+			UART_Send(UART_0, "\n\r", 2, BLOCKING);
+#endif
 			
 #ifdef MAP_RENDER_DEBUG
 			uint8_t ret = f_open(&(tiles[i]), buf, FA_OPEN_EXISTING|FA_READ);
 			if(ret != FR_OK)
 			{
-				return 3;
+				UART_Send(UART_0, "ret\n\r", 5, BLOCKING);
+				return ret;
 			}
 #else
 			f_open(&(tiles[i]), buf, FA_OPEN_EXISTING|FA_READ);
