@@ -1,4 +1,4 @@
-GNU_INSTALL_ROOT = /home/ghost/embedded/arm/gcc-arm-none-eabi-4_8-2014q3
+GNU_INSTALL_ROOT = /home/ghost/embedded/arm/gcc-arm-none-eabi-4_9-2014q4/
 ASM_EXT = s
 OUTNAME = LPC177x_8x_test
 LD_SCRIPT = ldscript_rom_gnu.ld
