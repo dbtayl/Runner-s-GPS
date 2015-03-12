@@ -39,6 +39,10 @@ typedef struct
 
 #define isLcdBlOn() (LPC_DAC->CR & 0x3ff<<6)
 
+//Flat to indicate the screen was touched
+//Set by PENIRQ; handled in main loop
+extern uint8_t touchFlag;
+
 
 uint8_t TSC2046_init();
 void configurePENIRQ();

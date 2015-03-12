@@ -38,8 +38,15 @@ unsigned int GPSUARTIndex = 0;
 //Whether the message we care about the message we're currently receiving
 unsigned char valid = 0;
 
+#if USE_GPS_MSG_GGA
 //Test string to check validity against
+//use this check string for GGA
+const unsigned char* check = "$GPGGA";
+#else
+//this one for RMC
 const unsigned char* check = "$GPRMC";
+#endif
+
 #define GPS_CHECK_LEN 6
 
 volatile GPSData gpsData;
@@ -77,9 +84,16 @@ void GPS_Init(unsigned int baud)
 	Delay(500);
 	
 	//Send message to disable messages we don't care about
-	//NOTE: This is the right string
+	//NOTE: This is the right string for RMC and nothing else
 	//$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\r\n
+	
+	//This string should enable GGA and nothing else
+	//$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\r\n
+	#if USE_GPS_MSG_GGA
+	uint8_t* txstr = "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\r\n";
+	#else
 	uint8_t* txstr = "$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29\r\n";
+	#endif
 	UART_Send(UART_3, txstr, 51, BLOCKING);
 	
 	//Enable interrupt on data received
@@ -146,6 +160,7 @@ void GPS_Wakeup()
 //FIXME: Do some error checking?
 inline void parseMessage()
 {
+	//For RMC:
 	//Byte 18 is 'valid fix' byte
 	//20-21 are degrees N/S
 	//22-23, 25-28 are minutes N/S
@@ -154,9 +169,29 @@ inline void parseMessage()
 	//35-36, 38-41 are minutes E/W
 	//43 is E/W byte
 	
+	//For GGA:
+	//Ex: $GPGGA,064951.000,2307.1256,N,12016.4438,E,1,8,0.95,39.9,M,17.8,M,,*65<CR><LF>
+	//Bytes 7-12 are hhmmss
+	//Byte 13 is '.'
+	//Bytes 14-16 are fractional seconds
+	//18-19 are degrees N/S
+	//20-21, 23-26 are minutes N/S
+	//28 is N/S byte
+	//30-32 are degrees E/W
+	//33-34, 36-39 are minutes E/W
+	//41 is E/W byte
+	//43 is fix indicator (0 = no fix, 1=GPS fix, 2 = DGPS fix)
+	//45 is number of satellites used
 	
+	
+	#if USE_GPS_MSG_GGA
+	//If the fix byte isn't '1' or '2', we don't have a fix
+	//FIXME: Be more stringent, and check if number of satellites is over some value?
+	if(GPSUARTBuffer[43] != '1' && GPSUARTBuffer[43] != '2')
+	#else
 	//If this isn't A, we don't have a fix
 	if(GPSUARTBuffer[18] != 'A')
+	#endif
 	{
 		gpsData.valid = 0;
 	}
@@ -165,8 +200,13 @@ inline void parseMessage()
 		gpsData.valid = 1;
 		
 		//Convert from minutes to decimal degrees
+		#if USE_GPS_MSG_GGA
+		gpsData.lat = ( (GPSUARTBuffer[18] - '0') * 10.0f + (GPSUARTBuffer[19] - '0') + ( (GPSUARTBuffer[20] - '0') * 10.0f + (GPSUARTBuffer[21] - '0') + (GPSUARTBuffer[23] - '0') / 10.0f + (GPSUARTBuffer[24] - '0') / 100.0f  + (GPSUARTBuffer[25] - '0') / 1000.0f  + (GPSUARTBuffer[26] - '0') / 10000.0f ) / 60.0f ) * (GPSUARTBuffer[28] == 'N' ? 1.0f : -1.0f);
+		gpsData.lon = ( (GPSUARTBuffer[30] - '0') * 100.0f + (GPSUARTBuffer[31] - '0') * 10.0f + (GPSUARTBuffer[32] - '0') + ( (GPSUARTBuffer[33] - '0') * 10.0f + (GPSUARTBuffer[34] - '0') + (GPSUARTBuffer[36] - '0') / 10.0f + (GPSUARTBuffer[37] - '0') / 100.0f  + (GPSUARTBuffer[38] - '0') / 1000.0f  + (GPSUARTBuffer[39] - '0') / 10000.0f ) / 60.0f ) * (GPSUARTBuffer[41] == 'E' ? 1.0f : -1.0f);
+		#else
 		gpsData.lat = ( (GPSUARTBuffer[20] - '0') * 10.0f + (GPSUARTBuffer[21] - '0') + ( (GPSUARTBuffer[22] - '0') * 10.0f + (GPSUARTBuffer[23] - '0') + (GPSUARTBuffer[25] - '0') / 10.0f + (GPSUARTBuffer[26] - '0') / 100.0f  + (GPSUARTBuffer[27] - '0') / 1000.0f  + (GPSUARTBuffer[28] - '0') / 10000.0f ) / 60.0f ) * (GPSUARTBuffer[30] == 'N' ? 1.0f : -1.0f);
 		gpsData.lon = ( (GPSUARTBuffer[32] - '0') * 100.0f + (GPSUARTBuffer[33] - '0') * 10.0f + (GPSUARTBuffer[34] - '0') + ( (GPSUARTBuffer[35] - '0') * 10.0f + (GPSUARTBuffer[36] - '0') + (GPSUARTBuffer[38] - '0') / 10.0f + (GPSUARTBuffer[39] - '0') / 100.0f  + (GPSUARTBuffer[40] - '0') / 1000.0f  + (GPSUARTBuffer[41] - '0') / 10000.0f ) / 60.0f ) * (GPSUARTBuffer[43] == 'E' ? 1.0f : -1.0f);
+		#endif
 		gpsUpdated = 1;
 	}
 		

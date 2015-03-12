@@ -33,4 +33,8 @@
 #define DEFAULT_ROT ROT_90
 #define DEFAULT_LCD_BACKLIGHT 400
 
+//Set to 1 to use GGA messages; 0 to use RMC
+//GGA should give a better handle on fix information
+#define USE_GPS_MSG_GGA 1
+
 #endif

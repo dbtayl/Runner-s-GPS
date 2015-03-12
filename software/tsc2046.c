@@ -54,11 +54,14 @@
 //FIXME: Needs to actually DO something (probably just set a flag so the main thread can handle it)
 //FIXME: Need to configure priority
 //FIXME: Need to allow this to wake up device from sleep
-//FIXME: Shoud set a flat for putting the LCD to sleep/waking it up
 void EINT0_IRQHandler(void)
 {
 	EXTI_ClearEXTIFlag(EXTI_EINT0);
 	
+	//Notify main loop that screen was touched
+	touchFlag = 1;
+	
+	/*
 	//If the screen is on, turn it off
 	if(isLcdBlOn())
 	{
@@ -70,6 +73,7 @@ void EINT0_IRQHandler(void)
 	{
 		DAC_UpdateValue(0, DEFAULT_LCD_BACKLIGHT);
 	}
+	*/
 }
 
 
@@ -166,7 +170,7 @@ uint8_t TSC2046_init()
 	cfg.CPHA = SSP_CPHA_SECOND;
 	cfg.CPOL = SSP_CPOL_LO;
 	
-	cfg.ClockRate = 100000;
+	cfg.ClockRate = 1000000;
 	
 	//Configure SSP pins
 	PINSEL_ConfigPin(0, 13, 2); //MOSI
