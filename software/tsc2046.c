@@ -54,7 +54,6 @@ uint8_t touchFlag;
 
 
 //Handles the PENIRQ input
-//FIXME: Needs to actually DO something (probably just set a flag so the main thread can handle it)
 //FIXME: Need to configure priority
 //FIXME: Need to allow this to wake up device from sleep
 void EINT0_IRQHandler(void)
@@ -83,9 +82,8 @@ void EINT0_IRQHandler(void)
 Point readTSC2046()
 {
 	Point pos;
-	//FIXME: Debug
-	pos.x = 123;
-	pos.y = 456;
+	pos.x = 0;
+	pos.y = 0;
 	
 	//Start at 2 to basically introduce rounding
 	uint16_t x = 2;
@@ -164,7 +162,6 @@ uint8_t TSC2046_init()
 	TSC2046_CS_DISABLE();
 	
 	//Configure SPI
-	//FIXME: These values may not be right
 	SSP_CFG_Type cfg;
 	SSP_ConfigStructInit(&cfg);
 	cfg.Databit = SSP_DATABIT_8;
