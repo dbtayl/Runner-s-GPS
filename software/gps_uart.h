@@ -42,6 +42,9 @@ typedef struct
 	unsigned char valid;
 } GPSData;
 
+//Whether the GPS is awake or not
+extern volatile uint8_t gpsActive;
+
 //Current lat/lon and whether we have a fix
 extern volatile GPSData gpsData;
 

@@ -31,7 +31,6 @@
 #include "lpc177x_8x_clkpwr.h"
 #include "lpc177x_8x_gpio.h"
 
-//FIXME: Some of these variables are unnecessary!
 unsigned char GPSUARTBuffer[GPS_UART_DATA_SIZE];
 unsigned int GPSUARTIndex = 0;
 
@@ -48,6 +47,8 @@ const unsigned char* check = "$GPRMC";
 #endif
 
 #define GPS_CHECK_LEN 6
+
+volatile uint8_t gpsActive = 1;
 
 volatile GPSData gpsData;
 
@@ -105,7 +106,15 @@ void GPS_Init(unsigned int baud)
 	__set_FAULTMASK(0);
 	__set_PRIMASK(0);
 	SCB->SCR = 0;
+	
+	//Set message as invalid before enabling iterrupt
+	valid = 0;
+	GPSUARTIndex = 0;
+	
 	NVIC_EnableIRQ(UART3_IRQn);
+	
+	//Set state to GPS on
+	gpsActive = 1;
 	
 	return;
 }
@@ -126,6 +135,10 @@ void GPS_Stop(void)
 	//LPC_GPIO5->CLR = 1<<4;
 	GPS_Sleep();
 	
+	//Set state to GPS off (redundant, but do it anyway)
+	gpsActive = 0;
+	gpsData.valid = 0;
+	
 	//Disable GPS UART TX
 	//UART_TxCmd(UART_3, DISABLE);
 	
@@ -143,6 +156,10 @@ void GPS_Sleep()
 	UART_Send(UART_3, sleepCmd, 15, BLOCKING);
 	
 	CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCUART3, DISABLE);
+	
+	//Set state to GPS off
+	gpsActive = 0;
+	gpsData.valid = 0;
 }
 
 
@@ -151,14 +168,17 @@ void GPS_Wakeup()
 	CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCUART3, ENABLE);
 	
 	//Send GPS Sleep command
-	uint8_t sleepCmd = ' ';
-	UART_Send(UART_3, &sleepCmd, 1, BLOCKING);
+	uint8_t wakeCmd = ' ';
+	UART_Send(UART_3, &wakeCmd, 1, BLOCKING);
+	
+	//Set state to GPS on
+	gpsActive = 1;
 }
 
 
 //Internal function to parse GPS message
 //FIXME: Do some error checking?
-inline void parseMessage()
+void parseMessage()
 {
 	//For RMC:
 	//Byte 18 is 'valid fix' byte
@@ -216,56 +236,12 @@ inline void parseMessage()
 
 void UART3_IRQHandler(void)
 {
-	unsigned char byte = 0;
-	unsigned char iir, lsr;
-	unsigned char recv = 0;
-
-	iir = (LPC_UART3->IIR >> 1) & 0x07;    // interrupt identification register
-	switch(iir)
-	{
-		case 0x3:   // 1 - Receive Line Status (RLS)
-		{
-			lsr = LPC_UART3->LSR;
-			if(lsr & 0x2) //overflow
-			{
-				//FIXME: Should really do something here...
-			}
-			else if(lsr & 0x9c)
-			{
-			
-			}
-			else if(lsr & 0x01) //data ready
-			{
-				recv = 1;
-			}
-			break;
-		}
-		case 0x2:   // 2a - Receive Data Available (RDA)
-		{
-			recv = 1;
-			break;
-		}
-		
-		case 0x6:   // 2b - Character Time-out indicator (CTI)
-		{
-			break;
-		}
-		
-		case 0x1:   // 3 - THRE interrupt
-		{
-			lsr = LPC_UART3->LSR;
-			break;
-		}
-		
-		case 0x0:   // 4 - Modem interrupt
-		{
-			break;
-		}
-	}
+	//NOTE: There was some other code in here; if it seems wonky, check git
 	
+	unsigned char byte = 0;
+
 	//Read in the available data
-	//FIXME: Outdated
-	while((LPC_UART3->LSR & 0x01) && recv)
+	while(LPC_UART3->LSR & 0x01)
 	{
 		//Read a byte
 		byte = LPC_UART3->RBR;
