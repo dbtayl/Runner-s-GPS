@@ -45,6 +45,7 @@
 #include "map_renderer.h"
 #include "tsc2046.h"
 #include "latlondist.h"
+#include "ts.h"
 
 //States used in the main loop
 //No GPS lock
@@ -58,6 +59,12 @@
 
 //Had a lock, lost it
 #define STATE_LOSTLOCK		3
+
+//Showing menu
+#define STATE_MENU			4
+
+//Temporary state to redraw menu
+#define STATE_MENU_ENTRY	5
 
 
 //FatFS stuff
@@ -181,8 +188,6 @@ int main()
 	printStr("WAITING FOR GPS LOCK", WAITMSGLEN, x, y);
 	x += FONT_W*WAITMSGLEN;
 	
-	configurePENIRQ();
-	
 	GPS_Init(9600);
 	gpsData.valid = 0;
 	
@@ -190,8 +195,8 @@ int main()
 	UART_Send(UART_0, "GPS init done\n\r", 15, BLOCKING);
 	
 	//FIXME: Testing touchscreen
-	//CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, DISABLE);
 	TSC2046_init();
+	configurePENIRQ();
 	/*Point tp = {0x0000,0x0000};
 	while (1)
 	{
@@ -259,7 +264,7 @@ int main()
 	while(!gpsData.valid)
 	{
 		//FIXME: Debug
-		UART_Send(UART_0, "Wait for lock...\n\r", 18, BLOCKING);
+		//UART_Send(UART_0, (uint8_t*)"Wait for lock...\n\r", 18, BLOCKING);
 		printStr("   ", 3, x, y);
 		Delay(1000);
 		printStr(".  ", 3, x, y);
@@ -319,8 +324,9 @@ int main()
 	//16 and 17 are seconds
 	
 	
-	//FIXME: Need to handle screen touches in here somewhere
-	uint8_t state = STATE_NOLOCK;
+	//uint8_t state = STATE_NOLOCK;
+	//FIXME: Don't really start in menu state
+	uint8_t state = STATE_MENU_ENTRY;
 	while(1)
 	{
 		//No lock yet- show waiting for GPS lock screen
@@ -328,7 +334,7 @@ int main()
 		//FIXME: This state will never really happen, as we don't go past the boot screen until we have a lock at the moment
 		if(state == STATE_NOLOCK)
 		{
-			UART_Send(UART_0, "NOLOCK\n\r", 8, BLOCKING);
+			UART_Send(UART_0, (uint8_t*)"NOLOCK\n\r", 8, BLOCKING);
 			//If we have a GPS lock, move into LOCK_IDLE state
 			if(gpsData.valid)
 			{
@@ -338,7 +344,7 @@ int main()
 		
 		else if(state == STATE_LOCK_IDLE)
 		{
-			UART_Send(UART_0, "LOCKIDLE\n\r", 10, BLOCKING);
+			UART_Send(UART_0, (uint8_t*)"LOCKIDLE\n\r", 10, BLOCKING);
 			//If we lost our lock, go to LOST_LOCK state
 			if(!gpsData.valid)
 			{
@@ -366,9 +372,9 @@ int main()
 			if(ret)
 			{
 				uint8_t foo = ret + '0';
-				UART_Send(UART_0, "ret:", 4, BLOCKING);
+				UART_Send(UART_0, (uint8_t*)"ret:", 4, BLOCKING);
 				UART_Send(UART_0, &foo, 1, BLOCKING);
-				UART_Send(UART_0,"\r\n", 2, BLOCKING);
+				UART_Send(UART_0, (uint8_t*)"\r\n", 2, BLOCKING);
 			}
 			
 		} //STATE_LOCK_IDLE
@@ -387,12 +393,119 @@ int main()
 			printStr(LOST_GPS_MSG, LOST_GPS_MSG_LEN, x, y);
 		}
 		
+		else if(state == STATE_MENU_ENTRY)
+		{
+			//Options:
+			//Enable/disable GPS(?) - UL
+			//Start/stop run - UR
+			//Save log - LL
+			//Exit (back to map) - LR
+			
+			//Clear the screen
+			ili9340_set_view(screenInfo.rot, 0, screenInfo.w - 1, 0, screenInfo.h - 1);
+			ILI9340_CS_ENABLE();
+			ili9340_writeRegOnly(0x002c);
+			ILI9340_MODE_DATA();
+			ili9340_floodFill(0x0000, TFTWIDTH_PHYS*TFTHEIGHT_PHYS);
+			
+			//Start/stop GPS pane
+			uint16_t msgy = (TFTWIDTH_PHYS/2 - FONT_H)/2;
+			const uint16_t tfth2 = TFTHEIGHT_PHYS/2;
+			if(gpsActive)
+			{
+				#define GPS_OFF_STR "TURN GPS OFF"
+				#define GPS_OFF_STR_L 12
+				printStr((uint8_t*)GPS_OFF_STR, GPS_OFF_STR_L, (tfth2 - FONT_W*GPS_OFF_STR_L)/2, msgy);
+			}
+			else
+			{
+				#define GPS_ON_STR "TURN GPS ON"
+				#define GPS_ON_STR_L 11
+				printStr((uint8_t*)GPS_ON_STR, GPS_ON_STR_L, (tfth2 - FONT_W*GPS_ON_STR_L)/2, msgy);
+			}
+			
+			//Save log pane
+			//FIXME: Probably need if statement checking if there's a log to save
+			#define SAVE_LOG_STR "SAVE LOG"
+			#define SAVE_LOG_STR_L 8
+			printStr((uint8_t*)SAVE_LOG_STR, SAVE_LOG_STR_L, (tfth2 - FONT_W*SAVE_LOG_STR_L)/2, msgy + TFTWIDTH_PHYS/2);
+			
+			//Start/stop run pane
+			//FIXME: Needs a variable to know if a run is in-progress
+			printStr((uint8_t*)"START/STOP", 10, tfth2 + (tfth2 - FONT_W*10)/2, msgy);
+			
+			//Back button
+			#define BACK_STR "BACK"
+			#define BACK_STR_L 4
+			printStr((uint8_t*)BACK_STR, BACK_STR_L, tfth2 + (tfth2 - FONT_W*BACK_STR_L)/2, msgy + TFTWIDTH_PHYS/2);
+			
+			
+			//We never actually DO anything in this state; go to menu state
+			state = STATE_MENU;
+		}
+		
+		else if(state == STATE_MENU)
+		{
+			if(touchFlag)
+			{
+				Point p = getTouchCoords();
+				
+				//Left half of screen
+				if(p.x < TFTHEIGHT_PHYS/2)
+				{
+					//Top half of screen - Enable/disable GPS
+					if(p.y < TFTWIDTH_PHYS/2)
+					{
+						if(gpsActive)
+						{
+							GPS_Sleep();
+						}
+						else
+						{
+							GPS_Wakeup();
+						}
+						state = STATE_MENU_ENTRY;
+					}
+					//Bottom half of screen - Save log
+					else
+					{
+						//FIXME: Do something
+					}
+				}
+				//Right half of screen
+				else
+				{
+					//Top half of screen - Start/stop run
+					if(p.y < TFTWIDTH_PHYS/2)
+					{
+						//FIXME: Do something
+					}
+					//Bottom half of screen - Back
+					else
+					{
+						//FIXME: Need to select appropriate state
+						//What's here doesn't count
+						if(gpsData.valid)
+						{
+							state = STATE_LOCK_IDLE;
+						}
+						else
+						{
+							state = STATE_LOSTLOCK;
+						}
+					}
+				}
+			} //if(touchFlag)
+		} //state == STATE_MENU
+		
 		//Unknown state; go back to NOLOCK
 		else
 		{
 			state = STATE_NOLOCK;
 		}
 		
+		//Regardless of state, assume touchscreen events were handled if we care about them
+		touchFlag = 0;
 		
 		//Regardless of state, go to sleep
 		CLKPWR_Sleep();
