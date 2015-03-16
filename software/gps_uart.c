@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Daniel Taylor
+ * Copyright (c) 2015, Daniel Taylor
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -207,7 +207,7 @@ void parseMessage()
 	#if USE_GPS_MSG_GGA
 	//If the fix byte isn't '1' or '2', we don't have a fix
 	//FIXME: Be more stringent, and check if number of satellites is over some value?
-	if(GPSUARTBuffer[43] != '1' && GPSUARTBuffer[43] != '2')
+	if( (GPSUARTBuffer[43] != '1' && GPSUARTBuffer[43] != '2') || (GPSUARTBuffer[45] < '0' + MIN_SATS) )
 	#else
 	//If this isn't A, we don't have a fix
 	if(GPSUARTBuffer[18] != 'A')

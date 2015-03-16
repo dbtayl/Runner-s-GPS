@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Daniel Taylor
+ * Copyright (c) 2015, Daniel Taylor
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -36,5 +36,8 @@
 //Set to 1 to use GGA messages; 0 to use RMC
 //GGA should give a better handle on fix information
 #define USE_GPS_MSG_GGA 1
+
+//Min satellites used to consider a lock obtained. Only matters for GGA mode
+#define MIN_SATS 4
 
 #endif

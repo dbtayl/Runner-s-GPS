@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Daniel Taylor
+ * Copyright (c) 2015, Daniel Taylor
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@
 #include "font.h"
 
 //Uncomment to enable some debugging
-#define MAP_RENDER_DEBUG
+//#define MAP_RENDER_DEBUG
 
 //How many pixels wide/tall the map render window is, in pixels
 #define MAP_RENDER_W (screenInfo.w)
@@ -47,6 +47,9 @@
 //Size, in pixels, of the radius of the user position dot
 //Must be >= 2
 #define MAP_RENDER_USER_SIZE 4
+#if MAP_RENDER_USER_SIZE < 2
+#error User position size must be >= 2
+#endif
 
 //Color of user position indicator, 16-bit rgb565
 #define MAP_RENDER_USER_COLOR 0xf800

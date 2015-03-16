@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Daniel Taylor
+ * Copyright (c) 2015, Daniel Taylor
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -75,196 +75,21 @@ FIL dataFile;
 //Use 16k peripheral RAM as a cache
 //uint16_t cache[8192] __attribute__ ((section("RAM2")));
 
+void hardwareInit();
 void disableUnusedClocks();
 uint8_t showSplashScreen();
 
 int main()
 {
-	//First things first... turn off LCD backlight
-	DAC_Init(0);
-	//350 has LEDs practically off- screen is still black
-	//400 is dim, but visible
-	//450 draws an extra maybe 10 mA at 5V
-	//DAC_UpdateValue(0, 450);
-	DAC_UpdateValue(0, 0);
-	
-	//Turn off some other parts we don't use
-	disableUnusedClocks();
-	
-	//Set up GPIOs
-	GPIO_Init();
-	GPIO_SetDir(1, 0xffff0000, GPIO_DIRECTION_OUTPUT);
-	//GPIO_SetDir(0, 1<<14, GPIO_DIRECTION_OUTPUT); //TSC2046 CS
-	GPIO_SetDir(3, (1<<23)|(1<<24)|(1<<25)|(1<<26), GPIO_DIRECTION_OUTPUT);
-	GPIO_SetDir(4, 1<<5, GPIO_DIRECTION_OUTPUT); //LCD reset line
-	
-	//Set read line high
-	LPC_GPIO3->SET = 1<<23;
-	
-	//GPS enable pin is p5[4]- NOTE: No longer used
-	//Start with GPS on
-	//GPIO_SetDir(5, 1<<4, GPIO_DIRECTION_OUTPUT);
-	//LPC_GPIO5->SET = 1<<4;
-	
-	//Configure a timer so we can delay
-	TIM_TIMERCFG_Type tinit;
-	tinit.PrescaleOption = TIM_PRESCALE_TICKVAL;
-	tinit.PrescaleValue = 30; //12 seems to be the correct value for 24 MHz (if peripheral clock is divided by 2)
-	TIM_Init(LPC_TIM0, TIM_TIMER_MODE, &tinit);
-	
-	//Initialize the LCD
-	Delay(10);
-	ili9340_init(DEFAULT_ROT);
-	
-	//Configure UART so we can debug
-	UART_CFG_Type cfg;
-	UART_FIFO_CFG_Type UARTFIFOConfigStruct;
-	
-    //setting these to '1' gives UART0 control of p0[2,3]
-	PINSEL_ConfigPin(0, 2, 1);
-	PINSEL_ConfigPin(0, 3, 1);
-
-	UART_ConfigStructInit(&cfg);
-		
-	UART_Init(UART_0, &cfg);
-
-	UART_FIFOConfigStructInit(&UARTFIFOConfigStruct);
-	UART_FIFOConfig(UART_0, &UARTFIFOConfigStruct);
-	UART_TxCmd(UART_0, ENABLE);
-	
-	//Set up the SD card
-	mmc_inithardware();
-	UART_Send(UART_0, (uint8_t*)"MCI initialized\n\r", 17, BLOCKING);
-	
-	int ret = mmc_init_card();
-	if(ret != 0)
-	{
-		UART_Send(UART_0, (uint8_t*)"Card init failure\n\r", 19, BLOCKING);
-		
-		while(1)
-		{
-		}
-	}
-	UART_Send(UART_0, (uint8_t*)"Card initialized\n\r", 18, BLOCKING);
-	
-	//Try to use FatFS
-	FRESULT res = f_mount(&sdCard, "0:", 1);
-	if(res != FR_OK)
-	{
-		uint8_t buf[4];
-		buf[0] = res / 10 + '0';
-		buf[1] = res % 10 + '0';
-		buf[2] = '\n';
-		buf[3] = '\r';
-		UART_Send(UART_0, (uint8_t*)"Mount failure: ", 15, BLOCKING);
-		UART_Send(UART_0, buf, 4, BLOCKING);
-		while(1)
-		{
-		}
-	}
-	
-	UART_Send(UART_0, (uint8_t*)"Mounted card\n\r", 14, BLOCKING);
-	
-	//Render the spash screen
-	if(showSplashScreen())
-	{
-		UART_Send(UART_0, (uint8_t*)"Failed to show splash\n\r", 23, BLOCKING);
-		while(1)
-		{
-		}
-	}
-	
-	
-	//FIXME: Probably a better spot for this
-#if DIST_METHOD == DIST_METHOD_LINEAR
-	populateLatLonList();
-#endif
-	
-	//turn backlight on
-	DAC_UpdateValue(0, DEFAULT_LCD_BACKLIGHT);
-	#define WAITMSGLEN 20
-	uint16_t x = (screenInfo.w-((WAITMSGLEN+3)*FONT_W))/2;
-	uint16_t y = screenInfo.h - FONT_H;
-	printStr("WAITING FOR GPS LOCK", WAITMSGLEN, x, y);
-	x += FONT_W*WAITMSGLEN;
-	
-	GPS_Init(9600);
-	gpsData.valid = 0;
-	
-	//FIXME: Debug
-	UART_Send(UART_0, "GPS init done\n\r", 15, BLOCKING);
-	
-	//FIXME: Testing touchscreen
-	TSC2046_init();
-	configurePENIRQ();
-	/*Point tp = {0x0000,0x0000};
-	while (1)
-	{
-		#define XMIN 300
-		#define XMAX 3850
-		#define YMIN 300
-		#define YMAX 3850
-		
-		tp = readTSC2046();
-		
-		//uint8_t buf[20];
-		//buf[3] = tp.x%10 + '0';
-		//tp.x /= 10;
-		//buf[2] = tp.x%10 + '0';
-		//tp.x /= 10;
-		//buf[1] = tp.x%10 + '0';
-		//tp.x /= 10;
-		//buf[0] = tp.x%10 + '0';
-		//buf[4] = ',';
-		//buf[5] = ' ';
-		//buf[9] = tp.y%10 + '0';
-		//tp.y /= 10;
-		//buf[8] = tp.y%10 + '0';
-		//tp.y /= 10;
-		//buf[7] = tp.y%10 + '0';
-		//tp.y /= 10;
-		//buf[6] = tp.y%10 + '0';
-		//buf[10] = '\n';
-		//buf[11] = '\r';
-		//UART_Send(UART_0, buf, 12, BLOCKING);
-		
-		
-		uint16_t tmpx = tp.x;
-		tp.x = (uint16_t)((float)(tp.y - XMIN) * 320.0f / (float)(XMAX-XMIN) + 0.5f);
-		tp.y = 240 - (uint16_t)((float)(tmpx - YMIN) * 240.0f / (float)(YMAX-YMIN) + 0.5f);
-		
-		tp.x = tp.x >= 320 ? 319 : tp.x;
-		tp.y = tp.y >= 240 ? 239 : tp.y;
-		
-		uint16_t endx = tp.x + 4;
-		uint16_t endy = tp.y + 4;
-		
-		
-		//Set the cursor to the location given
-		ILI9340_CS_ENABLE();
-		ili9340_writeReg(0x002A,(tp.x>>8)&0x00ff);				//column address set
-			ili9340_writeData(tp.x&0x00ff);				//start 0x0000
-			ili9340_writeData((endx>>8)&0x00ff);
-			ili9340_writeData(endx&0x00ff);				//end 0x00EF
-		ili9340_writeReg(0x002B,(tp.y>>8)&0x00ff);				//page address set
-			ili9340_writeData(tp.y&0x00ff);				//start 0x0000
-			ili9340_writeData((endy>>8)&0x00ff);
-			ili9340_writeData(endy&0x00ff);				//end 0x013F
-			
-		//Draw a pixel
-		ili9340_writeReg(0x002c, 0xf800); //Write a pixel
-		ILI9340_CS_DISABLE();
-	}*/
-	
+	hardwareInit();
 	
 	//Save some power on DMA
 	CLKPWR_ConfigPPWR(CLKPWR_PCONP_PCGPDMA, DISABLE);
 	
-	
+	//Wait for GPS fix before doing anything
+	//FIXME: May want some better way of doing this
 	while(!gpsData.valid)
 	{
-		//FIXME: Debug
-		//UART_Send(UART_0, (uint8_t*)"Wait for lock...\n\r", 18, BLOCKING);
 		printStr("   ", 3, x, y);
 		Delay(1000);
 		printStr(".  ", 3, x, y);
@@ -276,7 +101,7 @@ int main()
 	}
 	
 	//Black out the screen
-	ili9340_set_view(ROT_90, 0, 319, 0, 239);
+	ili9340_set_view(ROT_90, 0, TFTHEIGHT_PHYS-1, 0, TFTWIDTH_PHYS-1);
 	ILI9340_CS_ENABLE();
 	ili9340_writeRegOnly(0x002c);
 	ILI9340_MODE_DATA();
@@ -583,6 +408,132 @@ int main()
 	}
 	
 	return 0;
+}
+
+
+//Does initial setup of hardware
+//Moved here to keep main() clean(er)
+void hardwareInit()
+{
+	//First things first... turn off LCD backlight
+	DAC_Init(0);
+	//350 has LEDs practically off- screen is still black
+	//400 is dim, but visible
+	//450 draws an extra maybe 10 mA at 5V
+	//DAC_UpdateValue(0, 450);
+	DAC_UpdateValue(0, 0);
+	
+	//Turn off some other parts we don't use
+	disableUnusedClocks();
+	
+	//Set up GPIOs
+	GPIO_Init();
+	GPIO_SetDir(1, 0xffff0000, GPIO_DIRECTION_OUTPUT);
+	//GPIO_SetDir(0, 1<<14, GPIO_DIRECTION_OUTPUT); //TSC2046 CS
+	GPIO_SetDir(3, (1<<23)|(1<<24)|(1<<25)|(1<<26), GPIO_DIRECTION_OUTPUT);
+	GPIO_SetDir(4, 1<<5, GPIO_DIRECTION_OUTPUT); //LCD reset line
+	
+	//Set read line high
+	LPC_GPIO3->SET = 1<<23;
+	
+	//GPS enable pin is p5[4]- NOTE: No longer used
+	//Start with GPS on
+	//GPIO_SetDir(5, 1<<4, GPIO_DIRECTION_OUTPUT);
+	//LPC_GPIO5->SET = 1<<4;
+	
+	//Configure a timer so we can delay
+	TIM_TIMERCFG_Type tinit;
+	tinit.PrescaleOption = TIM_PRESCALE_TICKVAL;
+	tinit.PrescaleValue = 30; //12 seems to be the correct value for 24 MHz (if peripheral clock is divided by 2)
+	TIM_Init(LPC_TIM0, TIM_TIMER_MODE, &tinit);
+	
+	//Initialize the LCD
+	Delay(10);
+	ili9340_init(DEFAULT_ROT);
+	
+	//Configure UART so we can debug
+	UART_CFG_Type cfg;
+	UART_FIFO_CFG_Type UARTFIFOConfigStruct;
+	
+    //setting these to '1' gives UART0 control of p0[2,3]
+	PINSEL_ConfigPin(0, 2, 1);
+	PINSEL_ConfigPin(0, 3, 1);
+
+	UART_ConfigStructInit(&cfg);
+		
+	UART_Init(UART_0, &cfg);
+
+	UART_FIFOConfigStructInit(&UARTFIFOConfigStruct);
+	UART_FIFOConfig(UART_0, &UARTFIFOConfigStruct);
+	UART_TxCmd(UART_0, ENABLE);
+	
+	//Set up the SD card
+	mmc_inithardware();
+	UART_Send(UART_0, (uint8_t*)"MCI initialized\n\r", 17, BLOCKING);
+	
+	int ret = mmc_init_card();
+	if(ret != 0)
+	{
+		UART_Send(UART_0, (uint8_t*)"Card init failure\n\r", 19, BLOCKING);
+		
+		while(1)
+		{
+		}
+	}
+	UART_Send(UART_0, (uint8_t*)"Card initialized\n\r", 18, BLOCKING);
+	
+	//Try to use FatFS
+	FRESULT res = f_mount(&sdCard, "0:", 1);
+	if(res != FR_OK)
+	{
+		uint8_t buf[4];
+		buf[0] = res / 10 + '0';
+		buf[1] = res % 10 + '0';
+		buf[2] = '\n';
+		buf[3] = '\r';
+		UART_Send(UART_0, (uint8_t*)"Mount failure: ", 15, BLOCKING);
+		UART_Send(UART_0, buf, 4, BLOCKING);
+		while(1)
+		{
+		}
+	}
+	
+	UART_Send(UART_0, (uint8_t*)"Mounted card\n\r", 14, BLOCKING);
+	
+	//Render the spash screen
+	if(showSplashScreen())
+	{
+		UART_Send(UART_0, (uint8_t*)"Failed to show splash\n\r", 23, BLOCKING);
+		while(1)
+		{
+		}
+	}
+	
+	
+	//FIXME: Probably a better spot for this
+#if DIST_METHOD == DIST_METHOD_LINEAR
+	populateLatLonList();
+#endif
+	
+	//turn backlight on
+	DAC_UpdateValue(0, DEFAULT_LCD_BACKLIGHT);
+	#define WAITMSGLEN 20
+	uint16_t x = (screenInfo.w-((WAITMSGLEN+3)*FONT_W))/2;
+	uint16_t y = screenInfo.h - FONT_H;
+	printStr("WAITING FOR GPS LOCK", WAITMSGLEN, x, y);
+	x += FONT_W*WAITMSGLEN;
+	
+	GPS_Init(9600);
+	gpsData.valid = 0;
+	
+	//FIXME: Debug
+	UART_Send(UART_0, "GPS init done\n\r", 15, BLOCKING);
+	
+	//Initialize touchscreen
+	TSC2046_init();
+	configurePENIRQ();
+	
+	return;
 }
 
 
